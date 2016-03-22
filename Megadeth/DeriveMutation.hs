@@ -14,14 +14,7 @@ import Control.Arrow
 import Control.Applicative
 import Data.List
 
---import qualified Data.Text as T
-import qualified Data.Set as S
-import qualified Data.Graph as G
-import qualified Data.Map.Strict as M
-import Control.Monad.Trans.State.Lazy
-import qualified Control.Monad.Trans.Class as TC
-
-import Megadeth.DeriveArbitrary
+import Megadeth.Prim
 --import Mutation
 --
 -- | Mutation Class
