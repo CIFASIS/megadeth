@@ -11,8 +11,11 @@ build-type:          Simple
 Extra-source-files:  README.md
 cabal-version:       >=1.10
 
-executable megadeth
-  hs-source-dirs:      src
-  main-is:             Main.hs
+Library
   default-language:    Haskell2010
+  Exposed-modules:     Megadeth.DeriveArbitrary, Megadeth.DeriveMutation
   build-depends:       base >= 4.7 && < 5
+                       , template-haskell
+                       , QuickCheck
+                       , containers
+                       , transformers
