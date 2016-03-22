@@ -39,11 +39,10 @@ paramNames = map f
         f (KindedTV n _) = n
 
 applyTo :: TypeQ -> [TypeQ] -> TypeQ
-applyTo c ns =
-  foldl (\h pn -> appT h pn) c ns
+applyTo = foldl appT
 
 fixAppl :: Exp -> Exp
-fixAppl (UInfixE e1@(UInfixE {}) op e2) = UInfixE (fixAppl e1) op e2
+fixAppl (UInfixE e1@UInfixE {} op e2) = UInfixE (fixAppl e1) op e2
 fixAppl (UInfixE con op e) = UInfixE con (VarE '(<$>)) e
 fixAppl e = AppE (VarE 'return) e
                                           
@@ -59,7 +58,7 @@ headOf (VarT n) = n
 -- | Check whether a type is a Primitive Type.
 -- Something like Int#, Bool#, etc.
 isPrim :: Info -> Bool
-isPrim (PrimTyConI _ _ _ ) = True
+isPrim PrimTyConI {} = True
 isPrim _ = False
 
 -- | View Pattern for Constructors
@@ -123,12 +122,11 @@ headOfNoVar _ = []
 getDeps :: Name -> StQ (M.Map Name Names) ()
 getDeps t = do
   visited <- member t
-  if (visited || hasArbIns t) then return ()
-  else do
-              TC.lift $ runIO $ print $ "PreVisiting:" ++ show t
-              tip <- TC.lift $ reify t
-              TC.lift $ runIO $ print $ "Visiting: " ++ show tip
-              case tip of
+  unless (visited || hasArbIns t) (return ())
+  TC.lift $ runIO $ print $ "PreVisiting:" ++ show t
+  tip <- TC.lift $ reify t
+  TC.lift $ runIO $ print $ "Visiting: " ++ show tip
+  case tip of
                 TyConI (DataD _ _ _ constructors _) -> do
                       let innerTypes = nub $ concat [ findLeafTypes ty | (simpleConView t -> SimpleCon _ _ tys) <- constructors, ty <- tys, not (isVarT ty) ]
                       let hof = map headOf innerTypes
@@ -136,47 +134,39 @@ getDeps t = do
                       mapM_ getDeps hof
                 TyConI (NewtypeD _ nm _ constructor _) -> do 
                       let (SimpleCon _ 0 ts )= simpleConView nm constructor
-                      let innerTypes = nub $ concat $ map findLeafTypes $ filter (not . isVarT) ts
+                      let innerTypes = nub $ concatMap findLeafTypes $ filter (not . isVarT) ts
                       let hof = map headOf innerTypes
                       addDep t hof
                       mapM_ getDeps hof
                 TyConI (TySynD _ _ m) -> do
                     addDep t (headOfNoVar m)
                     mapM_ getDeps (headOfNoVar m) 
-                d -> 
-                    if (isPrim tip) then return () else return ()
+                d -> return ()
+                    -- if (isPrim tip) then return () else return ()
 
 
 tocheck :: [TyVarBndr] -> Name -> Type
 tocheck bndrs nm =
-    let ns = map VarT $ paramNames bndrs in foldl (\r a -> AppT r a) (ConT nm) ns
+    let ns = map VarT $ paramNames bndrs in foldl AppT (ConT nm) ns
 
 hasArbIns :: Name -> Bool
 --hasArbIns n = isPrefixOf "GHC." (show n) || isPrefixOf "Data.Vector" (show n) || isPrefixOf "Data.Text" (show n) || isPrefixOf "Codec.Picture.Types" (show n) || isPrefixOf "Data.ByteString" (show n) || isPrefixOf "Data.Map" (show n) 
 hasArbIns n = isPrefixOf "GHC." (show n) || isPrefixOf "Data." (show n) || isPrefixOf "Codec.Picture.Types" (show n)
 
+doPreq :: Name -> Name -> [TyVarBndr] -> Q Bool
+doPreq classname n [] = fmap not (isInstance classname [ConT n])
+doPreq classname n xs = fmap not (isInstance classname [tocheck xs n])
+
 isinsName :: Name -> Name -> Q Bool
 isinsName className n = do
         inf <- reify n
         case inf of
-            TyConI (DataD _ _ preq _ _) -> 
-                        if length preq > 0 then
-                                (isInstance className [tocheck preq n]) >>= (return . not)
-                        else
-                                (isInstance className [(ConT n)]) >>= (return . not)
-            TyConI (NewtypeD _ _ preq _ _) -> 
-                        if length preq > 0 then
-                                (isInstance className [tocheck preq n]) >>= (return . not)
-                        else
-                                (isInstance className [(ConT n)]) >>= (return . not)
-            TyConI (TySynD _ preq _ ) -> 
-                        if length preq > 0 then
-                                (isInstance className [tocheck preq n]) >>= (return . not)
-                        else
-                                (isInstance className [(ConT n)]) >>= (return . not)
+            TyConI (DataD _ _ preq _ _) -> doPreq className n preq
+            TyConI (NewtypeD _ _ preq _ _) -> doPreq className n preq
+            TyConI (TySynD _ preq _ ) -> doPreq className n preq
             d -> do
                 runIO $ print $ "Weird case:: " ++ show d
-                isInstance className [(ConT n)] >>= (return . not)
+                doPreq className n [] 
 
 prevDev :: Name -> Q [Name]
 prevDev t = do
