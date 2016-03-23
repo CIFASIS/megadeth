@@ -175,3 +175,10 @@ prevDev t = do
         let (graph, v2ter, f) = G.graphFromEdges rs
         let topsorted = reverse $ G.topSort graph
         return (map (\p -> (let (n,_,_) = v2ter p in n)) topsorted)
+
+derive :: (Name -> Q [Dec]) -> (Name -> Q Bool) -> Name -> Q [Dec]
+derive inst filt t = do
+    ts' <- prevDev t
+    ts'' <- filterM filt ts'
+    ts <- mapM inst ts''
+    return $ concat ts

@@ -55,7 +55,7 @@ deriveArbitrary t = do
               let ns  = map varT $ paramNames params
                   scons = map (simpleConView t) constructors
                   fcs = filter ((==0) . bf) scons
-              if length ns > 0 then
+              if not $ null ns then
                [d| instance $(applyTo (tupleT (length ns)) (map (appT (conT ''Arbitrary)) ns))
                             => Arbitrary $(applyTo (conT t) ns) where
                               arbitrary = sized go --(arbitrary :: Gen Int) >>= go
@@ -127,14 +127,18 @@ deriveArbitraryRec t = do
 
 isArbInsName = isinsName ''Arbitrary
 
--- TODO: add debugging flag, or remove all those prints.
 devArbitrary :: Name -> Q [Dec]
-devArbitrary t = do
-        ts' <- prevDev t
-        runIO $ print $ "Topologically sorted types" ++ show ts'
-        ts'' <- filterM isArbInsName ts'
-        runIO $ print $ "We should derive in this order ---" ++ show ts''
-        ts <- mapM (\t -> (runIO $ print $ show t) >> deriveArbitrary t) ts'' -- Notice here, we call
-        -- deriveArbitrary directly, because we are fully confident we can
-        -- derive all the types in that order.
-        return $ concat ts
+devArbitrary = derive deriveArbitrary isArbInsName 
+-- TODO: add debugging flag, or remove all those prints.
+{-
+   devArbitrary :: Name -> Q [Dec]
+   devArbitrary t = do
+           ts' <- prevDev t
+           runIO $ print $ "Topologically sorted types" ++ show ts'
+           ts'' <- filterM isArbInsName ts'
+           runIO $ print $ "We should derive in this order ---" ++ show ts''
+           ts <- mapM (\t -> (runIO $ print $ show t) >> deriveArbitrary t) ts'' -- Notice here, we call
+           -- deriveArbitrary directly, because we are fully confident we can
+           -- derive all the types in that order.
+           return $ concat ts
+-}
