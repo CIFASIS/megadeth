@@ -14,8 +14,8 @@ as :: [Name]
 as = map (\x -> mkName $ 'a':show x) ([1..] :: [Int])
 
 rnfC :: Name -> [Name] -> ExpQ
-rnfC c [] = varE '() 
-rnfC c vars = foldr (\ n r -> appE (appE (varE 'seq) (varE n)) r) (varE '()) vars
+rnfC c [] = conE '() 
+rnfC c vars = foldr (\ n r -> appE (appE (varE 'seq) (varE n)) r) (conE '()) vars
 
 deriveNF :: Name -> Q [Dec]
 deriveNF name = do
