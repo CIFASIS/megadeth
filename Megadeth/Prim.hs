@@ -120,38 +120,44 @@ headOfNoVar (SigT t _ ) = headOfNoVar t
 headOfNoVar (AppT ty1 ty2) = headOfNoVar ty1 ++ headOfNoVar ty2
 headOfNoVar _ = []
 
-getDeps :: Name -> StQ (M.Map Name Names) ()
-getDeps t = do
+getDeps :: Name -> (Name -> Q Bool) -> StQ (M.Map Name Names) ()
+getDeps t ban = do
   visited <- member t
-  unless (visited || hasArbIns t) (return ())
-  TC.lift $ runIO $ print $ "PreVisiting:" ++ show t
-  tip <- TC.lift $ reify t
-  TC.lift $ runIO $ print $ "Visiting: " ++ show tip
-  case tip of
-                TyConI (DataD _ _ _ constructors _) -> do
-                      let innerTypes = nub $ concat [ findLeafTypes ty | (simpleConView t -> SimpleCon _ _ tys) <- constructors, ty <- tys, not (isVarT ty) ]
-                      let hof = foldr (\ x r -> 
-                                        case x of 
-                                            (TupleT 0) -> r
-                                            x -> headOf x : r                      
-                            ) [] innerTypes --map headOf innerTypes
-                      addDep t hof
-                      mapM_ getDeps hof
-                TyConI (NewtypeD _ nm _ constructor _) -> do 
-                      let (SimpleCon _ 0 ts )= simpleConView nm constructor
-                      let innerTypes = nub $ concatMap findLeafTypes $ filter (not . isVarT) ts
-                      let hof = foldr (\ x r -> 
-                                        case x of 
-                                            (TupleT 0) -> r
-                                            x -> headOf x : r                      
-                            ) [] innerTypes --map headOf innerTypes
-                      addDep t hof
-                      mapM_ getDeps hof
-                TyConI (TySynD _ _ m) -> do
-                    addDep t (headOfNoVar m)
-                    mapM_ getDeps (headOfNoVar m) 
-                d -> return ()
-                    -- if (isPrim tip) then return () else return ()
+  b <- TC.lift $  ban t
+  let cond = (b || visited || hasArbIns t)
+  if cond then
+    return ()
+  else do
+      TC.lift $ runIO $ print $ "PreVisiting:" ++ show t
+      tip <- TC.lift $ reify t
+      TC.lift $ runIO $ print $ "Visiting: " ++ show tip
+      case tip of
+                    TyConI (DataD _ _ _ constructors _) -> do
+                          let innerTypes = nub $ concat [ findLeafTypes ty | (simpleConView t -> SimpleCon _ _ tys) <- constructors, ty <- tys, not (isVarT ty) ]
+                          let hof = foldr (\ x r -> 
+                                            case x of 
+                                                (TupleT 0) -> r
+                                                x -> headOf x : r                      
+                                ) [] innerTypes --map headOf innerTypes
+                          addDep t hof
+                          mapM_ getDeps' hof
+                    TyConI (NewtypeD _ nm _ constructor _) -> do 
+                          let (SimpleCon _ 0 ts )= simpleConView nm constructor
+                          let innerTypes = nub $ concatMap findLeafTypes $ filter (not . isVarT) ts
+                          let hof = foldr (\ x r -> 
+                                            case x of 
+                                                (TupleT 0) -> r
+                                                x -> headOf x : r                      
+                                ) [] innerTypes --map headOf innerTypes
+                          addDep t hof
+                          mapM_ getDeps' hof
+                    TyConI (TySynD _ _ m) -> do
+                        addDep t (headOfNoVar m)
+                        mapM_ getDeps' (headOfNoVar m) 
+                    d -> return ()
+                        -- if (isPrim tip) then return () else return ()
+    where
+        getDeps' = flip getDeps $ ban
 
 
 tocheck :: [TyVarBndr] -> Name -> Type
@@ -177,19 +183,20 @@ isinsName className n = do
                 runIO $ print $ "Weird case:: " ++ show d
                 doPreq className n [] 
 
-prevDev :: Name -> Q [Name]
-prevDev t = do
-        mapp <- execStateT (getDeps t) M.empty 
+prevDev :: Name -> (Name -> Q Bool) -> Q [Name]
+prevDev t ban = do
+        mapp <- execStateT (getDeps t ban) M.empty 
         let rs = M.foldrWithKey (\ k d ds -> (k,k,d) : ds) [] mapp
         let (graph, v2ter, f) = G.graphFromEdges rs
         let topsorted = reverse $ G.topSort graph
         return (map (\p -> (let (n,_,_) = v2ter p in n)) topsorted)
 
 derive :: (Name -> Q [Dec]) -- ^ Instance generator
-        -> (Name -> Q Bool) -- ^ Blacklist dependencies
+        -> (Name -> Q Bool) -- ^ Blacklist dependencies before dependecies were generated
+        -> (Name -> Q Bool) -- ^ Blacklist dependencies after dependecies were generated
         -> Name -> Q [Dec]
-derive inst filt t = do
-    ts' <- prevDev t
+derive inst prefil filt t = do
+    ts' <- prevDev t prefil
     ts'' <- filterM filt ts'
     ts <- mapM inst ts''
     return $ concat ts

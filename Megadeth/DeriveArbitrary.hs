@@ -128,7 +128,7 @@ deriveArbitraryRec t = do
 isArbInsName = isinsName ''Arbitrary
 
 devArbitrary :: Name -> Q [Dec]
-devArbitrary = derive deriveArbitrary isArbInsName 
+devArbitrary = derive deriveArbitrary (\_-> return False) isArbInsName 
 -- TODO: add debugging flag, or remove all those prints.
 {-
    devArbitrary :: Name -> Q [Dec]
