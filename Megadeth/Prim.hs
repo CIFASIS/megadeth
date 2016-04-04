@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE LambdaCase#-}
 module Megadeth.Prim where
 
 import Language.Haskell.TH
@@ -129,13 +130,21 @@ getDeps t = do
   case tip of
                 TyConI (DataD _ _ _ constructors _) -> do
                       let innerTypes = nub $ concat [ findLeafTypes ty | (simpleConView t -> SimpleCon _ _ tys) <- constructors, ty <- tys, not (isVarT ty) ]
-                      let hof = map headOf innerTypes
+                      let hof = foldr (\ x r -> 
+                                        case x of 
+                                            (TupleT 0) -> r
+                                            x -> headOf x : r                      
+                            ) [] innerTypes --map headOf innerTypes
                       addDep t hof
                       mapM_ getDeps hof
                 TyConI (NewtypeD _ nm _ constructor _) -> do 
                       let (SimpleCon _ 0 ts )= simpleConView nm constructor
                       let innerTypes = nub $ concatMap findLeafTypes $ filter (not . isVarT) ts
-                      let hof = map headOf innerTypes
+                      let hof = foldr (\ x r -> 
+                                        case x of 
+                                            (TupleT 0) -> r
+                                            x -> headOf x : r                      
+                            ) [] innerTypes --map headOf innerTypes
                       addDep t hof
                       mapM_ getDeps hof
                 TyConI (TySynD _ _ m) -> do
@@ -176,7 +185,9 @@ prevDev t = do
         let topsorted = reverse $ G.topSort graph
         return (map (\p -> (let (n,_,_) = v2ter p in n)) topsorted)
 
-derive :: (Name -> Q [Dec]) -> (Name -> Q Bool) -> Name -> Q [Dec]
+derive :: (Name -> Q [Dec]) -- ^ Instance generator
+        -> (Name -> Q Bool) -- ^ Blacklist dependencies
+        -> Name -> Q [Dec]
 derive inst filt t = do
     ts' <- prevDev t
     ts'' <- filterM filt ts'
