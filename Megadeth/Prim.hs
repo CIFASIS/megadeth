@@ -182,3 +182,18 @@ derive inst filt t = do
     ts'' <- filterM filt ts'
     ts <- mapM inst ts''
     return $ concat ts
+
+{-
+   modInfo :: Q [a] 
+   modInfo = do
+       this <- thisModule
+       (ModuleInfo imports)<- reifyModule this
+       runIO $ print imports
+       runIO $ print "----"
+       --let (Module _ (ModName s)) = last imports
+       --runIO $ print s
+       --s' <- lookupValueName (s ++ ".*")
+       --s' <- reify s
+       --runIO $ print s'
+       return []
+-}
