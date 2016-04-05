@@ -124,10 +124,9 @@ getDeps :: Name -> (Name -> Q Bool) -> StQ (M.Map Name Names) ()
 getDeps t ban = do
   visited <- member t
   b <- TC.lift $  ban t
-  let cond = (b || visited || hasArbIns t)
-  if cond then
-    return ()
-  else do
+  let cond = b || visited || hasArbIns t
+  unless cond $
+    do
       TC.lift $ runIO $ print $ "PreVisiting:" ++ show t
       tip <- TC.lift $ reify t
       TC.lift $ runIO $ print $ "Visiting: " ++ show tip
