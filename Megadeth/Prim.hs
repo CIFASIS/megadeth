@@ -48,13 +48,18 @@ fixAppl (UInfixE con op e) = UInfixE con (VarE '(<$>)) e
 fixAppl e = AppE (VarE 'return) e
                                           
 -- | Look up  the first type name in a type structure.
+-- This function is not complete, so it could fail and it will
+-- with an error message with the case that is missing
 headOf :: Type -> Name
 headOf (AppT ListT ty) = headOf ty
 headOf (AppT (TupleT _) ty) = headOf ty 
+headOf (AppT ArrowT e) = headOf e
+headOf (AppT ListT ty ) = headOf ty
 headOf (AppT ty1 _) = headOf ty1
 headOf (SigT ty _) = headOf ty
 headOf (ConT n) = n
 headOf (VarT n) = n
+headOf e = error ("Missing :" ++ show e)
 
 -- | Check whether a type is a Primitive Type.
 -- Something like Int#, Bool#, etc.
