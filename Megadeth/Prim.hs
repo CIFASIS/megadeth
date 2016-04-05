@@ -190,11 +190,11 @@ prevDev t ban = do
         let topsorted = reverse $ G.topSort graph
         return (map (\p -> (let (n,_,_) = v2ter p in n)) topsorted)
 
-derive :: (Name -> Q [Dec]) -- ^ Instance generator
+megaderive :: (Name -> Q [Dec]) -- ^ Instance generator
         -> (Name -> Q Bool) -- ^ Blacklist dependencies before dependecies were generated
         -> (Name -> Q Bool) -- ^ Blacklist dependencies after dependecies were generated
         -> Name -> Q [Dec]
-derive inst prefil filt t = do
+megaderive inst prefil filt t = do
     ts' <- prevDev t prefil
     ts'' <- filterM filt ts'
     ts <- mapM inst ts''
