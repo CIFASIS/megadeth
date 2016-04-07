@@ -16,9 +16,11 @@ Library
   Exposed-modules:     Megadeth.DeriveArbitrary, Megadeth.DeriveMutation
                        ,Megadeth.DeriveNFData
                        ,Megadeth.Prim
+                       ,Megadeth.DeriveShow
   build-depends:       base >= 4.7 && < 5
                        , template-haskell
                        , QuickCheck
                        , containers
                        , transformers
                        , deepseq
+                       , derive
