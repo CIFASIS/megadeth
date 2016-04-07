@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE ViewPatterns #-}
 module Megadeth.DeriveArbitrary where
 
 import Language.Haskell.TH
@@ -91,9 +89,9 @@ deriveArbitrary t = do
                         else -- Don't think we could ever enter here
                             fail "Tuple without arguments"
                 (ConT n) -> return [] -- This type should had been derived already,
-                                        -- It its a clearly dependency and it
+                                        -- It is clearly a dependency and it
                                         -- should be put before in the topsort.
-                pepe -> do
+                _ -> do
                      runIO $ print "IGNORING"
                      runIO $ print ty
                      return []
