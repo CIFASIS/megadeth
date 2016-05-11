@@ -11,6 +11,9 @@ import Data.List
 
 import Megadeth.Prim
 
+import Data.DeriveTH
+import Data.Derive.Show
+
 -- | Build the arbitrary function.
 chooseExpQ :: Name -> Integer -> Type -> ExpQ
 chooseExpQ t bf (AppT ListT ty) = appE ( varE (mkName "listOf")) (appE (appE (varE (mkName "resize")) ([| ($(varE (mkName "n")) `div` 10) |])) (varE 'arbitrary))
@@ -127,6 +130,11 @@ isArbInsName = isinsName ''Arbitrary
 
 devArbitrary :: Name -> Q [Dec]
 devArbitrary = megaderive deriveArbitrary (\_-> return False) isArbInsName 
+
+devDeriveArbitrary :: Name -> Q [Dec]
+devDeriveArbitrary = megaderive (derive makeArbitrary) (const $ return False) isArbInsName  
+
+
 -- TODO: add debugging flag, or remove all those prints.
 {-
    devArbitrary :: Name -> Q [Dec]
