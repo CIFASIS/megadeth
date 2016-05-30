@@ -170,7 +170,7 @@ tocheck bndrs nm =
 
 hasArbIns :: Name -> Bool
 --hasArbIns n = isPrefixOf "GHC." (show n) || isPrefixOf "Data.Vector" (show n) || isPrefixOf "Data.Text" (show n) || isPrefixOf "Codec.Picture.Types" (show n) || isPrefixOf "Data.ByteString" (show n) || isPrefixOf "Data.Map" (show n) 
-hasArbIns n = isPrefixOf "GHC." (show n) || isPrefixOf "Data." (show n) || isPrefixOf "Codec.Picture.Types" (show n)
+hasArbIns n = isPrefixOf "GHC." (show n) || isPrefixOf "Data.Text" (show n) || isPrefixOf "Data.Vector" (show n) || isPrefixOf "Data.ByteString" (show n) || isPrefixOf "Codec.Picture.Types" (show n)
 
 doPreq :: Name -> Name -> [TyVarBndr] -> Q Bool
 doPreq classname n [] = fmap not (isInstance classname [ConT n])
