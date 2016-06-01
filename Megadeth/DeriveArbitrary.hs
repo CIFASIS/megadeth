@@ -63,10 +63,13 @@ deriveArbitrary t = do
                                 where go n | n <= 1 = oneof $(listE (makeArbs t fcs))
                                            | otherwise = oneof ( ($(listE (makeArbs t fcs))) ++ $(listE (makeArbs t scons))) |]
                else
+                let reccall = if (length ns > 1)
+                                then [|  oneof ( ($(listE (makeArbs t fcs)))++ $(listE (makeArbs t scons))) |]
+                                else [| oneof $(listE (makeArbs t scons))|] in
                 [d| instance Arbitrary $(applyTo (conT t) ns) where
                                arbitrary = sized go --(arbitrary :: Gen Int) >>= go
                                  where go n | n <= 1 = oneof $(listE (makeArbs t fcs))
-                                            | otherwise = oneof ( ($(listE (makeArbs t fcs)))++ $(listE (makeArbs t scons))) |]
+                                            | otherwise = $(reccall) |]
         TyConI (NewtypeD _ _ params con _) -> do
             let ns = map varT $ paramNames params
                 scon = simpleConView t con
@@ -134,17 +137,3 @@ devArbitrary = megaderive deriveArbitrary (\_-> return False) isArbInsName
 devDeriveArbitrary :: Name -> Q [Dec]
 devDeriveArbitrary = megaderive (derive makeArbitrary) (const $ return False) isArbInsName  
 
-
--- TODO: add debugging flag, or remove all those prints.
-{-
-   devArbitrary :: Name -> Q [Dec]
-   devArbitrary t = do
-           ts' <- prevDev t
-           runIO $ print $ "Topologically sorted types" ++ show ts'
-           ts'' <- filterM isArbInsName ts'
-           runIO $ print $ "We should derive in this order ---" ++ show ts''
-           ts <- mapM (\t -> (runIO $ print $ show t) >> deriveArbitrary t) ts'' -- Notice here, we call
-           -- deriveArbitrary directly, because we are fully confident we can
-           -- derive all the types in that order.
-           return $ concat ts
--}
