@@ -46,15 +46,14 @@ fixAppl :: Exp -> Exp
 fixAppl (UInfixE e1@UInfixE {} op e2) = UInfixE (fixAppl e1) op e2
 fixAppl (UInfixE con op e) = UInfixE con (VarE '(<$>)) e
 fixAppl e = AppE (VarE 'return) e
-                                          
+
 -- | Look up  the first type name in a type structure.
 -- This function is not complete, so it could fail and it will
 -- with an error message with the case that is missing
 headOf :: Type -> Name
 headOf (AppT ListT ty) = headOf ty
-headOf (AppT (TupleT _) ty) = headOf ty 
+headOf (AppT (TupleT _) ty) = headOf ty
 headOf (AppT ArrowT e) = headOf e
-headOf (AppT ListT ty ) = headOf ty
 headOf (AppT ty1 _) = headOf ty1
 headOf (SigT ty _) = headOf ty
 headOf (ConT n) = n
@@ -80,7 +79,7 @@ simpleConView tyName c =
   InfixC (_,t1) n (_,t2) ->
     SimpleCon n (countCons (== tyName) t1 + countCons (== tyName) t2) [t1,t2]
   ForallC _ _ innerCon -> simpleConView tyName innerCon
-                                              
+
 
 -- | Get the first type in a type application.
 -- Maybe we should improve this one
@@ -172,7 +171,9 @@ hasArbIns :: Name -> Bool
 --hasArbIns n = isPrefixOf "GHC." (show n) || isPrefixOf "Data.Vector" (show n) || isPrefixOf "Data.Text" (show n) || isPrefixOf "Codec.Picture.Types" (show n) || isPrefixOf "Data.ByteString" (show n) || isPrefixOf "Data.Map" (show n) 
 hasArbIns n = let sn = show n in
         isPrefixOf "GHC." sn
-    ||  isPrefixOf "Data." sn
+    ||  isPrefixOf "Data.Text" sn
+    ||  isPrefixOf "Data.Vector" sn
+    ||  isPrefixOf "Data.ByteString" sn
     ||  isPrefixOf "Codec.Picture.Types" sn
     ||  isPrefixOf "Codec.Picture.Metadata" sn
 
