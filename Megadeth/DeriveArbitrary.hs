@@ -88,15 +88,15 @@ deriveArbitrary t = do
                                            | otherwise = oneof ($(listE (makeArbs t [scon]))) |]
         TyConI inp@(TySynD _ params ty) ->
             case (getTy ty) of
-                (TupleT n) -> do
-                        let ns = map varT $ paramNames params 
+                (TupleT n) -> 
+                        let ns = map varT $ paramNames params in
                         if (length ns > 0 ) then
                            [d| instance $(applyTo (tupleT (length ns)) (map (appT (conT ''Arbitrary)) ns))
                                         => Arbitrary $(applyTo (conT t) ns) where
                                           arbitrary = $(genTupleArbs n) |]
                         else -- Don't think we could ever enter here
-                            runIO $ print inp >>
-                            fail "Tuple without arguments! JAMON"
+                           [d| instance Arbitrary $(applyTo (conT t) ns) where
+                                          arbitrary = $(genTupleArbs n) |]
                 (ConT n) -> return [] -- This type should had been derived already,
                                         -- It is clearly a dependency and it
                                         -- should be put before in the topsort.
