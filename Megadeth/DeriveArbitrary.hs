@@ -15,17 +15,17 @@ import Data.DeriveTH
 import Data.Derive.Show
 
 -- | Build the arbitrary function with makeArbs
-chooseExpQ :: Name -> Integer -> Type -> ExpQ
-chooseExpQ t bf (AppT ListT ty) = appE ( varE (mkName "listOf")) (appE (appE (varE (mkName "resize")) ([| ($(varE (mkName "n")) `div` 10) |])) (varE 'arbitrary))
-chooseExpQ t bf ty | headOf ty /= t = appE (appE (varE (mkName "resize")) ([|$(varE (mkName "n"))|])) (varE 'arbitrary)
-chooseExpQ t bf ty =
+chooseExpQ :: Name -> Name -> Integer -> Type -> ExpQ
+chooseExpQ n t bf (AppT ListT ty) = appE ( varE (mkName "listOf")) (appE (appE (varE (mkName "resize")) ([| ($(varE n) `div` 10) |])) (varE 'arbitrary))
+chooseExpQ n t bf ty | headOf ty /= t = appE (appE (varE (mkName "resize")) ([|$(varE n)|])) (varE 'arbitrary)
+chooseExpQ n t bf ty =
   case bf of
     0  -> varE 'arbitrary
-    1  -> appE (varE (mkName "go")) [| ($(varE (mkName "n")) - 1) |]
-    bf -> appE (varE (mkName "go")) [| ($(varE (mkName "n")) `div` bf) |]
+    1  -> appE (varE (mkName "go")) [| ($(varE n) - 1) |]
+    bf -> appE (varE (mkName "go")) [| ($(varE n) `div` bf) |]
 
 
-makeArbs t xs = map (fmap fixAppl) [ foldl (\h ty -> uInfixE h (varE '(<*>)) (chooseExpQ t bf ty)) (conE name) tys' | SimpleCon name bf tys' <- xs]
+makeArbs n t xs = map (fmap fixAppl) [ foldl (\h ty -> uInfixE h (varE '(<*>)) (chooseExpQ n t bf ty)) (conE name) tys' | SimpleCon name bf tys' <- xs]
 
 -- | Generic function used to create arbitrarily large tuples
 -- @
@@ -62,16 +62,16 @@ deriveArbitrary t = do
                [d| instance $(applyTo (tupleT (length ns)) (map (appT (conT ''Arbitrary)) ns))
                             => Arbitrary $(applyTo (conT t) ns) where
                               arbitrary = sized go --(arbitrary :: Gen Int) >>= go
-                                where go n | n <= 1 = oneof $(listE (makeArbs t fcs))
-                                           | otherwise = oneof ( ($(listE (makeArbs t fcs))) ++ $(listE (makeArbs t scons))) |]
+                                where go n | n <= 1 = oneof $(listE (makeArbs 'n t fcs))
+                                           | otherwise = oneof ( ($(listE (makeArbs 'n t fcs))) ++ $(listE (makeArbs 'n t scons))) |]
                else
-                let reccall = if (length ns > 1)
-                                then [|  oneof ( ($(listE (makeArbs t fcs)))++ $(listE (makeArbs t scons))) |]
-                                else [| oneof $(listE (makeArbs t scons))|] in
+                let reccall n = if (length ns > 1)
+                                then [|  oneof ( ($(listE (makeArbs n t fcs)))++ $(listE (makeArbs n t scons))) |]
+                                else [| oneof $(listE (makeArbs n t scons))|] in
                 [d| instance Arbitrary $(applyTo (conT t) ns) where
                                arbitrary = sized go --(arbitrary :: Gen Int) >>= go
-                                 where go n | n <= 1 = oneof $(listE (makeArbs t fcs))
-                                            | otherwise = $(reccall) |]
+                                 where go n | n <= 1 = oneof $(listE (makeArbs 'n t fcs))
+                                            | otherwise = $(reccall 'n) |]
         TyConI (NewtypeD _ _ params con _) -> do
             let ns = map varT $ paramNames params
                 scon = simpleConView t con
@@ -79,13 +79,13 @@ deriveArbitrary t = do
                [d| instance $(applyTo (tupleT (length ns)) (map (appT (conT ''Arbitrary)) ns))
                             => Arbitrary $(applyTo (conT t) ns) where
                               arbitrary = sized go --(arbitrary :: Gen Int) >>= go
-                                where go n | n <= 1 = oneof $(listE (makeArbs t [scon]))
-                                           | otherwise = oneof ($(listE (makeArbs t [scon]))) |]
+                                where go n | n <= 1 = oneof $(listE (makeArbs 'n t [scon]))
+                                           | otherwise = oneof ($(listE (makeArbs 'n t [scon]))) |]
                else
                 [d| instance Arbitrary $(applyTo (conT t) ns) where
                                arbitrary = sized go --(arbitrary :: Gen Int) >>= go
-                                where go n | n <= 1 = oneof $(listE (makeArbs t [scon]))
-                                           | otherwise = oneof ($(listE (makeArbs t [scon]))) |]
+                                where go n | n <= 1 = oneof $(listE (makeArbs 'n t [scon]))
+                                           | otherwise = oneof ($(listE (makeArbs 'n t [scon]))) |]
         TyConI inp@(TySynD _ params ty) ->
             case (getTy ty) of
                 (TupleT n) -> 
@@ -103,7 +103,7 @@ deriveArbitrary t = do
                 _ -> do
                      runIO $ print "IGNORING"
                      runIO $ print ty
-                     return []
+                     return [] 
         d -> do
           if (isPrim inf) then return [] else
             (fail $ "Case not defined: " ++ show d)
