@@ -16,11 +16,13 @@ import Data.Derive.Show
 
 -- | Build the arbitrary function with makeArbs
 chooseExpQ :: Name -> Name -> Integer -> Type -> ExpQ
-chooseExpQ n t bf (AppT ListT ty) = appE ( varE (mkName "listOf")) (appE (appE (varE (mkName "resize")) ([| ($(varE n) `div` 10) |])) (varE 'arbitrary))
-chooseExpQ n t bf ty | headOf ty /= t = appE (appE (varE (mkName "resize")) ([|$(varE n)|])) (varE 'arbitrary)
+chooseExpQ n t bf (AppT ListT ty) = [| listOf $ resize ($(varE n) `div` 10) arbitrary |]
+    -- appE ( varE (mkName "listOf")) (appE (appE (varE (mkName "resize")) ([| ($(varE n) `div` 10) |])) (varE 'arbitrary))
+chooseExpQ n t bf ty | headOf ty /= t = [| resize $(varE n) arbitrary |]
+    -- appE (appE (varE (mkName "resize")) (varE n)) (varE 'arbitrary)
 chooseExpQ n t bf ty =
   case bf of
-    0  -> varE 'arbitrary
+    0  -> [| arbitrary |] --varE 'arbitrary
     1  -> appE (varE (mkName "go")) [| ($(varE n) - 1) |]
     bf -> appE (varE (mkName "go")) [| ($(varE n) `div` bf) |]
 
@@ -66,7 +68,7 @@ deriveArbitrary t = do
                                            | otherwise = oneof ( ($(listE (makeArbs 'n t fcs))) ++ $(listE (makeArbs 'n t scons))) |]
                else
                 let reccall n = if (length ns > 1)
-                                then [|  oneof ( ($(listE (makeArbs n t fcs)))++ $(listE (makeArbs n t scons))) |]
+                                then [| oneof ( ($(listE (makeArbs n t fcs)))++ $(listE (makeArbs n t scons))) |]
                                 else [| oneof $(listE (makeArbs n t scons))|] in
                 [d| instance Arbitrary $(applyTo (conT t) ns) where
                                arbitrary = sized go --(arbitrary :: Gen Int) >>= go
@@ -75,7 +77,7 @@ deriveArbitrary t = do
         TyConI (NewtypeD _ _ params con _) -> do
             let ns = map varT $ paramNames params
                 scon = simpleConView t con
-            if length ns > 0 then
+            if not $ null ns then
                [d| instance $(applyTo (tupleT (length ns)) (map (appT (conT ''Arbitrary)) ns))
                             => Arbitrary $(applyTo (conT t) ns) where
                               arbitrary = sized go --(arbitrary :: Gen Int) >>= go
@@ -90,7 +92,7 @@ deriveArbitrary t = do
             case (getTy ty) of
                 (TupleT n) -> 
                         let ns = map varT $ paramNames params in
-                        if (length ns > 0 ) then
+                        if not $ null ns then
                            [d| instance $(applyTo (tupleT (length ns)) (map (appT (conT ''Arbitrary)) ns))
                                         => Arbitrary $(applyTo (conT t) ns) where
                                           arbitrary = $(genTupleArbs n) |]
