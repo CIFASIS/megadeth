@@ -1,3 +1,4 @@
+{-# Language TemplateHaskell #-}
 module Megadeth.DeriveArbitrary where
 
 import Language.Haskell.TH
@@ -16,10 +17,8 @@ import Data.Derive.Show
 
 -- | Build the arbitrary function with makeArbs
 chooseExpQ :: Name -> Name -> Integer -> Type -> ExpQ
-chooseExpQ n t bf (AppT ListT ty) = [| listOf $ resize ($(varE n) `div` 10) arbitrary |]
-    -- appE ( varE (mkName "listOf")) (appE (appE (varE (mkName "resize")) ([| ($(varE n) `div` 10) |])) (varE 'arbitrary))
+chooseExpQ n t bf (AppT ListT ty) = [| listOf $ resize ($(varE  n) `div` 10) arbitrary |]
 chooseExpQ n t bf ty | headOf ty /= t = [| resize $(varE n) arbitrary |]
-    -- appE (appE (varE (mkName "resize")) (varE n)) (varE 'arbitrary)
 chooseExpQ n t bf ty =
   case bf of
     0  -> [| arbitrary |] --varE 'arbitrary
@@ -74,7 +73,7 @@ deriveArbitrary t = do
                                arbitrary = sized go --(arbitrary :: Gen Int) >>= go
                                  where go n | n <= 1 = oneof $(listE (makeArbs 'n t fcs))
                                             | otherwise = $(reccall 'n) |]
-        TyConI (NewtypeD _ _ params con _) -> do
+        TyConI (NewtypeD _ _ params con _) -> do 
             let ns = map varT $ paramNames params
                 scon = simpleConView t con
             if not $ null ns then
