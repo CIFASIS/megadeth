@@ -1,22 +1,22 @@
+{-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE LambdaCase#-}
+{-# LANGUAGE ViewPatterns    #-}
 module Megadeth.Prim where
 
-import Language.Haskell.TH
-import Language.Haskell.TH.Syntax
+import           Language.Haskell.TH
+import           Language.Haskell.TH.Syntax
 
-import Control.Monad
-import Control.Arrow
-import Control.Applicative
-import Data.List
+import           Control.Applicative
+import           Control.Arrow
+import           Control.Monad
+import           Data.List
 
 --import qualified Data.Text as T
-import qualified Data.Set as S
-import qualified Data.Graph as G
-import qualified Data.Map.Strict as M
-import Control.Monad.Trans.State.Lazy
-import qualified Control.Monad.Trans.Class as TC
+import qualified Control.Monad.Trans.Class      as TC
+import           Control.Monad.Trans.State.Lazy
+import qualified Data.Graph                     as G
+import qualified Data.Map.Strict                as M
+import qualified Data.Set                       as S
 
 -- | View Pattern for Types
 data ConView = SimpleCon {nm :: Name, bf :: Integer, tt :: [Type]}
@@ -97,7 +97,7 @@ findLeafTypes (AppT (TupleT n) ty) = findLeafTypes ty
 findLeafTypes (AppT p@(ConT _) ty) = p : findLeafTypes ty
 findLeafTypes (AppT ty1 ty2) = findLeafTypes ty1 ++ findLeafTypes ty2
 findLeafTypes (VarT _) = []
-findLeafTypes (ForallT _ _ ty) = findLeafTypes ty 
+findLeafTypes (ForallT _ _ ty) = findLeafTypes ty
 findLeafTypes ArrowT = []
 findLeafTypes ListT = []
 findLeafTypes StarT = []
@@ -137,26 +137,26 @@ getDeps t ban = do
       case tip of
                     TyConI (DataD _ _ _ constructors _) -> do
                           let innerTypes = nub $ concat [ findLeafTypes ty | (simpleConView t -> SimpleCon _ _ tys) <- constructors, ty <- tys, not (isVarT ty) ]
-                          let hof = foldr (\ x r -> 
-                                            case x of 
+                          let hof = foldr (\ x r ->
+                                            case x of
                                                 (TupleT 0) -> r
-                                                x -> headOf x : r                      
+                                                x -> headOf x : r
                                 ) [] innerTypes --map headOf innerTypes
                           addDep t hof
                           mapM_ getDeps' hof
-                    TyConI (NewtypeD _ nm _ constructor _) -> do 
+                    TyConI (NewtypeD _ nm _ constructor _) -> do
                           let (SimpleCon _ 0 ts )= simpleConView nm constructor
                           let innerTypes = nub $ concatMap findLeafTypes $ filter (not . isVarT) ts
-                          let hof = foldr (\ x r -> 
-                                            case x of 
+                          let hof = foldr (\ x r ->
+                                            case x of
                                                 (TupleT 0) -> r
-                                                x -> headOf x : r                      
+                                                x -> headOf x : r
                                 ) [] innerTypes --map headOf innerTypes
                           addDep t hof
                           mapM_ getDeps' hof
                     TyConI (TySynD _ _ m) -> do
                         addDep t (headOfNoVar m)
-                        mapM_ getDeps' (headOfNoVar m) 
+                        mapM_ getDeps' (headOfNoVar m)
                     d -> return ()
                         -- if (isPrim tip) then return () else return ()
     where
@@ -168,7 +168,7 @@ tocheck bndrs nm =
     let ns = map VarT $ paramNames bndrs in foldl AppT (ConT nm) ns
 
 hasArbIns :: Name -> Bool
---hasArbIns n = isPrefixOf "GHC." (show n) || isPrefixOf "Data.Vector" (show n) || isPrefixOf "Data.Text" (show n) || isPrefixOf "Codec.Picture.Types" (show n) || isPrefixOf "Data.ByteString" (show n) || isPrefixOf "Data.Map" (show n) 
+--hasArbIns n = isPrefixOf "GHC." (show n) || isPrefixOf "Data.Vector" (show n) || isPrefixOf "Data.Text" (show n) || isPrefixOf "Codec.Picture.Types" (show n) || isPrefixOf "Data.ByteString" (show n) || isPrefixOf "Data.Map" (show n)
 hasArbIns n = let sn = show n in
         isPrefixOf "GHC." sn
     ||  isPrefixOf "Data.Text" sn
@@ -190,19 +190,19 @@ isinsName className n = do
             TyConI (TySynD _ preq _ ) -> doPreq className n preq
             d -> do
                 runIO $ print $ "Weird case:: " ++ show d
-                doPreq className n [] 
+                doPreq className n []
 
 prevDev :: Name -> (Name -> Q Bool) -> Q [Name]
 prevDev t ban = do
-        mapp <- execStateT (getDeps t ban) M.empty 
+        mapp <- execStateT (getDeps t ban) M.empty
         let rs = M.foldrWithKey (\ k d ds -> (k,k,d) : ds) [] mapp
         let (graph, v2ter, f) = G.graphFromEdges rs
         let topsorted = reverse $ G.topSort graph
         return (map (\p -> (let (n,_,_) = v2ter p in n)) topsorted)
 
 megaderive :: (Name -> Q [Dec]) -- ^ Instance generator
-        -> (Name -> Q Bool) -- ^ Blacklist dependencies before dependecies were generated
-        -> (Name -> Q Bool) -- ^ Blacklist dependencies after dependecies were generated
+        -> (Name -> Q Bool) -- ^ Blacklist dependences before
+        -> (Name -> Q Bool) -- ^ Blacklist dependences after
         -> Name -> Q [Dec]
 megaderive inst prefil filt t = do
     ts' <- prevDev t prefil
@@ -211,7 +211,7 @@ megaderive inst prefil filt t = do
     return $ concat ts
 
 {-
-   modInfo :: Q [a] 
+   modInfo :: Q [a]
    modInfo = do
        this <- thisModule
        (ModuleInfo imports)<- reifyModule this
