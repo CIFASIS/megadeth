@@ -26,6 +26,7 @@ chooseExpQ n t bf ty =
     bf -> appE (varE (mkName "go")) [| ($(varE n) `div` bf) |]
 
 
+makeArbs :: Name -> Name ->  [ConView] -> [ExpQ]
 makeArbs n t xs = map (fmap fixAppl) [ foldl (\h ty -> uInfixE h (varE '(<*>)) (chooseExpQ n t bf ty)) (conE name) tys' | SimpleCon name bf tys' <- xs]
 
 -- | Generic function used to create arbitrarily large tuples
@@ -59,32 +60,34 @@ deriveArbitrary t = do
               let ns  = map varT $ paramNames params
                   scons = map (simpleConView t) constructors
                   fcs = filter ((==0) . bf) scons
+                  gos n = if length scons > 1
+                          then
+                                [|  if $(varE n)
+                                    then oneof $(listE (makeArbs n t fcs))
+                                    else oneof (($(listE (makeArbs n t fcs))) ++ $(listE (makeArbs n t scons)))|]
+                          else
+                                [| return $(head (makeArbs n t scons)) |]
               if not $ null ns then
                [d| instance $(applyTo (tupleT (length ns)) (map (appT (conT ''Arbitrary)) ns))
                             => Arbitrary $(applyTo (conT t) ns) where
-                              arbitrary = sized go --(arbitrary :: Gen Int) >>= go
-                                where go n | n <= 1 = oneof $(listE (makeArbs 'n t fcs))
-                                           | otherwise = oneof ( ($(listE (makeArbs 'n t fcs))) ++ $(listE (makeArbs 'n t scons))) |]
+                              arbitrary = sized go
+                                where go n = $(gos 'n) |]
                else
-                let reccall n = if (length ns > 1)
-                                then [| oneof ( ($(listE (makeArbs n t fcs)))++ $(listE (makeArbs n t scons))) |]
-                                else [| oneof $(listE (makeArbs n t scons))|] in
                 [d| instance Arbitrary $(applyTo (conT t) ns) where
-                               arbitrary = sized go --(arbitrary :: Gen Int) >>= go
+                               arbitrary = sized go
                                  where go n | n <= 1 = oneof $(listE (makeArbs 'n t fcs))
-                                            | otherwise = $(reccall 'n) |]
+                                            | otherwise = oneof $(listE (makeArbs 'n t scons)) |]
         TyConI (NewtypeD _ _ params con _) -> do 
             let ns = map varT $ paramNames params
                 scon = simpleConView t con
             if not $ null ns then
                [d| instance $(applyTo (tupleT (length ns)) (map (appT (conT ''Arbitrary)) ns))
                             => Arbitrary $(applyTo (conT t) ns) where
-                              arbitrary = sized go --(arbitrary :: Gen Int) >>= go
-                                where go n | n <= 1 = oneof $(listE (makeArbs 'n t [scon]))
-                                           | otherwise = oneof ($(listE (makeArbs 'n t [scon]))) |]
+                              arbitrary = sized go 
+                                where go n = return $(head (makeArbs 'n t [scon])) |]
                else
                 [d| instance Arbitrary $(applyTo (conT t) ns) where
-                               arbitrary = sized go --(arbitrary :: Gen Int) >>= go
+                               arbitrary = sized go
                                 where go n | n <= 1 = oneof $(listE (makeArbs 'n t [scon]))
                                            | otherwise = oneof ($(listE (makeArbs 'n t [scon]))) |]
         TyConI inp@(TySynD _ params ty) ->
@@ -95,7 +98,7 @@ deriveArbitrary t = do
                            [d| instance $(applyTo (tupleT (length ns)) (map (appT (conT ''Arbitrary)) ns))
                                         => Arbitrary $(applyTo (conT t) ns) where
                                           arbitrary = $(genTupleArbs n) |]
-                        else -- Don't think we could ever enter here
+                        else
                            [d| instance Arbitrary $(applyTo (conT t) ns) where
                                           arbitrary = $(genTupleArbs n) |]
                 (ConT n) -> return [] -- This type should had been derived already,
