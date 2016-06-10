@@ -83,11 +83,11 @@ deriveArbitrary t = do
                [d| instance $(applyTo (tupleT (length ns)) (map (appT (conT ''Arbitrary)) ns))
                             => Arbitrary $(applyTo (conT t) ns) where
                               arbitrary = sized go 
-                                where go n = return $(head (makeArbs 'n t [scon])) |]
+                                where go n = $(head (makeArbs 'n t [scon])) |]
                else
                 [d| instance Arbitrary $(applyTo (conT t) ns) where
                                arbitrary = sized go
-                                where go n = return $(head (makeArbs 'n t [scon])) |]
+                                where go n = $(head (makeArbs 'n t [scon])) |]
         TyConI inp@(TySynD _ params ty) ->
             case (getTy ty) of
                 (TupleT n) -> 
