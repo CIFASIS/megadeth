@@ -60,8 +60,13 @@ deriveArbitrary t = do
               let ns  = map varT $ paramNames params
                   scons = map (simpleConView t) constructors
                   fcs = filter ((==0) . bf) scons
-                  gos g n = if length scons > 1
-                          then
+                  gos g n = -- Fancy gos
+                      if length scons > 1
+                      then
+                            if length fcs == length scons
+                            then
+                                [| oneof $(listE (makeArbs g n t fcs))|]
+                            else
                                 if length fcs > 1 
                                 then
                                     [|  if $(varE n) <= 1
@@ -71,8 +76,8 @@ deriveArbitrary t = do
                                     [|  if $(varE n) <= 1
                                     then $(head (makeArbs g n t fcs))
                                     else oneof $(listE (makeArbs g n t scons))|]
-                          else
-                                [| $(head (makeArbs g n t scons)) |]
+                      else
+                            [| $(head (makeArbs g n t scons)) |]
               if not $ null ns then
                [d| instance $(applyTo (tupleT (length ns)) (map (appT (conT ''Arbitrary)) ns))
                             => Arbitrary $(applyTo (conT t) ns) where
