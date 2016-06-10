@@ -18,14 +18,12 @@ import Data.Derive.Show
 -- | Build the arbitrary function with makeArbs
 chooseExpQ :: Name -> Name -> Name -> Integer -> Type -> ExpQ
 chooseExpQ g n t bf (AppT ListT ty) = [| listOf $ resize ($(varE  n) `div` 10) arbitrary |]
-chooseExpQ g n t bf ty | headOf ty /= t = [| resize $(varE n) arbitrary |]
+chooseExpQ g n t bf ty | headOf ty /= t = [| resize ($(varE n) - 1) arbitrary |]
 chooseExpQ g n t bf ty =
   case bf of
-    0  -> [| arbitrary |] --varE 'arbitrary
+    0  -> [| arbitrary |] 
     1  -> [| $(varE g) $ $(varE n) - 1 |]
---appE (varE (mkName "go")) [| () |]
     bf -> [| $(varE g) $ $(varE n) `div` bf |]
---appE (varE (mkName "go")) [|  |]
 
 
 makeArbs :: Name -> Name -> Name ->  [ConView] -> [ExpQ]
