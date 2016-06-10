@@ -62,7 +62,7 @@ deriveArbitrary t = do
                   fcs = filter ((==0) . bf) scons
                   gos n = if length scons > 1
                           then
-                                [|  if $(varE n)
+                                [|  if $(varE n) > 1
                                     then oneof $(listE (makeArbs n t fcs))
                                     else oneof $(listE (makeArbs n t scons))|]
                           else
