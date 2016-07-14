@@ -42,4 +42,4 @@ deriveNF name = do
                         >>= \x -> return [x]
 
 devNFData :: Name -> Q [Dec]
-devNFData = megaderive deriveNF (\_ -> return False) (isinsName ''NFData)
+devNFData = megaderive deriveNF (isinsName ''NFData)

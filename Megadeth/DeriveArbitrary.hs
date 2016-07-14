@@ -124,7 +124,7 @@ deriveArbitrary t = do
 isArbInsName = isinsName ''Arbitrary
 
 devArbitrary :: Name -> Q [Dec]
-devArbitrary = megaderive deriveArbitrary (\_-> return False) isArbInsName 
+devArbitrary = megaderive deriveArbitrary isArbInsName 
 
 devDeriveArbitrary :: Name -> Q [Dec]
-devDeriveArbitrary = megaderive (derive makeArbitrary) (const $ return False) isArbInsName  
+devDeriveArbitrary = megaderive (derive makeArbitrary) isArbInsName  

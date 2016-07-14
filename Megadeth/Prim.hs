@@ -168,7 +168,6 @@ tocheck bndrs nm =
     let ns = map VarT $ paramNames bndrs in foldl AppT (ConT nm) ns
 
 hasArbIns :: Name -> Bool
---hasArbIns n = isPrefixOf "GHC." (show n) || isPrefixOf "Data.Vector" (show n) || isPrefixOf "Data.Text" (show n) || isPrefixOf "Codec.Picture.Types" (show n) || isPrefixOf "Data.ByteString" (show n) || isPrefixOf "Data.Map" (show n)
 hasArbIns n = let sn = show n in
         isPrefixOf "GHC." sn
     ||  isPrefixOf "Data.Text" sn
@@ -200,27 +199,17 @@ prevDev t ban = do
         let topsorted = reverse $ G.topSort graph
         return (map (\p -> (let (n,_,_) = v2ter p in n)) topsorted)
 
-megaderive :: (Name -> Q [Dec]) -- ^ Instance generator
+megaderivePrim :: (Name -> Q [Dec]) -- ^ Instance generator
         -> (Name -> Q Bool) -- ^ Blacklist dependences before
-        -> (Name -> Q Bool) -- ^ Blacklist dependences after
+        -> (Name -> Q Bool) -- ^ Instance name
         -> Name -> Q [Dec]
-megaderive inst prefil filt t = do
+megaderivePrim inst prefil filt t = do
     ts' <- prevDev t prefil
-    ts'' <- filterM filt ts'
+    ts'' <- filterM filt ts' -- Remove already known instances
     ts <- mapM inst ts''
     return $ concat ts
 
-{-
-   modInfo :: Q [a]
-   modInfo = do
-       this <- thisModule
-       (ModuleInfo imports)<- reifyModule this
-       runIO $ print imports
-       runIO $ print "----"
-       --let (Module _ (ModName s)) = last imports
-       --runIO $ print s
-       --s' <- lookupValueName (s ++ ".*")
-       --s' <- reify s
-       --runIO $ print s'
-       return []
--}
+megaderive :: (Name -> Q [Dec])
+           -> (Name -> Q Bool) -- ^Instance name
+           -> Name -> Q [Dec]
+megaderive inst = megaderivePrim inst (const $ return False)
