@@ -18,7 +18,7 @@ import Data.Derive.Show
 -- | Build the arbitrary function with makeArbs
 chooseExpQ :: Name -> Name -> Name -> Integer -> Type -> ExpQ
 chooseExpQ g n t bf (AppT ListT ty) = [| listOf $ resize ($(varE  n) `div` 10) arbitrary |]
-chooseExpQ g n t bf ty | headOf ty /= t = [| resize ($(varE n) - 1) arbitrary |]
+chooseExpQ g n t bf ty | headOf ty /= t = [| resize (max 0 ($(varE n) - 1)) arbitrary |]
 chooseExpQ g n t bf ty =
   case bf of
     0  -> [| arbitrary |] 

@@ -175,6 +175,7 @@ hasArbIns n = let sn = show n in
     ||  isPrefixOf "Data.ByteString" sn
     ||  isPrefixOf "Codec.Picture.Types" sn
     ||  isPrefixOf "Codec.Picture.Metadata.Elem" sn
+    ||  isPrefixOf "Data.Time" sn
 
 doPreq :: Name -> Name -> [TyVarBndr] -> Q Bool
 doPreq classname n [] = fmap not (isInstance classname [ConT n])
