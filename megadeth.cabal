@@ -14,14 +14,8 @@ cabal-version:       >=1.10
 Library
   default-extensions:     TemplateHaskell, ViewPatterns
   default-language:    Haskell2010
-  Exposed-modules:     Megadeth.DeriveArbitrary, Megadeth.DeriveMutation
-                       ,Megadeth.DeriveNFData
-                       ,Megadeth.Prim
-                       ,Megadeth.DeriveShow
+  Exposed-modules:     Megadeth.Prim
   build-depends:       base >= 4.7 && < 5
                        , template-haskell
-                       , QuickCheck
                        , containers
                        , transformers
-                       , deepseq
-                       , derive
