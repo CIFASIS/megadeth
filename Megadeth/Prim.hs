@@ -81,6 +81,17 @@ simpleConView tyName c =
   in case c of
   NormalC n sts -> let ts = map snd sts
                    in SimpleCon n (count ts) ts
+#if MIN_VERSION_template_haskell(2,11,0)
+  -- On ghc-8 the following source:
+  --        data Keys a where
+  --            Gamma       :: Keys Double
+  --
+  -- yields the following AST:
+  --     GadtC [Codec.Picture.Metadata.Gamma] [] (AppT (ConT Codec.Picture.Metadata.Keys) (ConT GHC.Types.Double))
+  -- Handle it exactly as NormalC.
+  GadtC [n] sts _ -> let ts = map snd sts
+                     in SimpleCon n (count ts) ts
+#endif
   RecC n vsts   -> let ts = map proj3 vsts
                        proj3 (_,_,z) = z
                    in SimpleCon n (count ts) ts
