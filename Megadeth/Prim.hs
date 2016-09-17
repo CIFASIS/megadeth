@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns    #-}
+{-# LANGUAGE CPP             #-}
 module Megadeth.Prim where
 
 import           Language.Haskell.TH
@@ -17,6 +18,13 @@ import           Control.Monad.Trans.State.Lazy
 import qualified Data.Graph                     as G
 import qualified Data.Map.Strict                as M
 import qualified Data.Set                       as S
+
+-- TH 2.11 introduced kind type
+#if MIN_VERSION_template_haskell(2,11,0)
+#    define TH211MBKIND _maybe_kind
+#else
+#    define TH211MBKIND
+#endif
 
 -- | View Pattern for Types
 data ConView = SimpleCon {nm :: Name, bf :: Integer, tt :: [Type]}
@@ -135,7 +143,7 @@ getDeps t ban = do
       tip <- TC.lift $ reify t
       TC.lift $ runIO $ print $ "Visiting: " ++ show tip
       case tip of
-                    TyConI (DataD _ _ _ constructors _) -> do
+                    TyConI (DataD _ _ _ TH211MBKIND constructors _) -> do
                           let innerTypes = nub $ concat [ findLeafTypes ty | (simpleConView t -> SimpleCon _ _ tys) <- constructors, ty <- tys, not (isVarT ty) ]
                           let hof = foldr (\ x r ->
                                             case x of
@@ -144,7 +152,7 @@ getDeps t ban = do
                                 ) [] innerTypes --map headOf innerTypes
                           addDep t hof
                           mapM_ getDeps' hof
-                    TyConI (NewtypeD _ nm _ constructor _) -> do
+                    TyConI (NewtypeD _ nm _ TH211MBKIND constructor _) -> do
                           let (SimpleCon _ 0 ts )= simpleConView nm constructor
                           let innerTypes = nub $ concatMap findLeafTypes $ filter (not . isVarT) ts
                           let hof = foldr (\ x r ->
@@ -185,8 +193,8 @@ isinsName :: Name -> Name -> Q Bool
 isinsName className n = do
         inf <- reify n
         case inf of
-            TyConI (DataD _ _ preq _ _) -> doPreq className n preq
-            TyConI (NewtypeD _ _ preq _ _) -> doPreq className n preq
+            TyConI (DataD _ _ preq TH211MBKIND _ _) -> doPreq className n preq
+            TyConI (NewtypeD _ _ preq TH211MBKIND _ _) -> doPreq className n preq
             TyConI (TySynD _ preq _ ) -> doPreq className n preq
             d -> do
                 runIO $ print $ "Weird case:: " ++ show d
