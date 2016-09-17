@@ -87,7 +87,7 @@ simpleConView tyName c =
   InfixC (_,t1) n (_,t2) ->
     SimpleCon n (countCons (== tyName) t1 + countCons (== tyName) t2) [t1,t2]
   ForallC _ _ innerCon -> simpleConView tyName innerCon
-
+  _ -> error $ "simpleConView: failed on " ++ show c
 
 -- | Get the first type in a type application.
 -- Maybe we should improve this one
