@@ -194,6 +194,7 @@ hasArbIns n = let sn = show n in
     ||  isPrefixOf "Data.ByteString" sn
     ||  isPrefixOf "Codec.Picture.Types" sn
     ||  isPrefixOf "Codec.Picture.Metadata.Elem" sn
+    ||  isPrefixOf "Codec.Picture.Metadata.Keys" sn
     ||  isPrefixOf "Data.Time" sn
 
 doPreq :: Name -> Name -> [TyVarBndr] -> Q Bool
